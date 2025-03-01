@@ -1,0 +1,346 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="card animate-fade-in">
+        <div class="card-header">
+            <h2>Area Statement Calculator</h2>
+        </div>
+        
+        <div class="project-selection">
+            <div class="form-group">
+                <label for="projectAction">Project Action:</label>
+                <select id="projectAction" name="project_action">
+                    <option value="new">Create New Project</option>
+                    <option value="existing">Edit Existing Project</option>
+                </select>
+            </div>
+            
+            <div id="existingProjectSection" class="hidden animate-fade-in">
+                <div class="form-group">
+                    <label for="existingProjectSelect">Select Project:</label>
+                    <select id="existingProjectSelect" name="existing_project">
+                        <option value="">-- Select a project --</option>
+                        {% for project in projects %}
+                            <option value="{{ project }}">{{ project }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="button" id="loadProjectBtn" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Load Project Data
+                </button>
+            </div>
+        </div>
+        
+        <div class="form-container animate-fade-in">
+            <form id="areaStatementForm">
+                <div class="form-section">
+                    <h3>Project Information</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="projectName">Project Name:</label>
+                            <input type="text" id="projectName" name="project_name" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Area Statement</h3>
+                    <div id="areaEntries">
+                        <div class="area-entry">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>SR.NO.</label>
+                                    <input type="text" class="sr-no" value="1" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="floor">Floor:</label>
+                                    <input type="text" class="floor" name="floor" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="description">Description:</label>
+                                    <input type="text" class="description" name="description" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="area">Area (sq.ft):</label>
+                                    <input type="number" class="area" name="area" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <button type="button" class="btn btn-danger remove-entry" disabled>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" id="addEntryBtn" class="btn btn-info">
+                                <i class="fas fa-plus"></i> Add Room
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" id="resetBtn">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <button type="button" id="calculateBtn" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i> Calculate & Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Add new area entry
+    $('#addEntryBtn').click(function() {
+        const entryCount = $('.area-entry').length + 1;
+        const newEntry = `
+            <div class="area-entry">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SR.NO.</label>
+                        <input type="text" class="sr-no" value="${entryCount}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="floor">Floor:</label>
+                        <input type="text" class="floor" name="floor" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <input type="text" class="description" name="description" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="area">Area (sq.ft):</label>
+                        <input type="number" class="area" name="area" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" class="btn btn-danger remove-entry">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        $('#areaEntries').append(newEntry);
+        updateSerialNumbers();
+    });
+    
+    // Remove area entry
+    $(document).on('click', '.remove-entry', function() {
+        $(this).closest('.area-entry').remove();
+        updateSerialNumbers();
+    });
+    
+    // Update serial numbers
+    function updateSerialNumbers() {
+        $('.sr-no').each(function(index) {
+            $(this).val(index + 1);
+        });
+        
+        // If there's only one entry, disable its remove button
+        if ($('.area-entry').length <= 1) {
+            $('.remove-entry').prop('disabled', true);
+        } else {
+            $('.remove-entry').prop('disabled', false);
+        }
+    }
+    
+    // Calculate and save
+    $('#calculateBtn').click(function() {
+        // Validate form
+        let isValid = true;
+        $('#areaStatementForm input[required]').each(function() {
+            if ($(this).val() === '') {
+                isValid = false;
+                $(this).addClass('invalid');
+            } else {
+                $(this).removeClass('invalid');
+            }
+        });
+        
+        if (!isValid) {
+            alert('Please fill all required fields');
+            return;
+        }
+        
+        // Collect form data
+        const projectName = $('#projectName').val();
+        const areas = [];
+        
+        $('.area-entry').each(function() {
+            const floor = $(this).find('.floor').val();
+            const description = $(this).find('.description').val();
+            const area = parseFloat($(this).find('.area').val());
+            
+            areas.push({
+                floor: floor,
+                description: description,
+                area: area
+            });
+        });
+        
+        // Send data to server
+        $.ajax({
+            url: '/save-area-statement',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                project_name: projectName,
+                areas: areas
+            }),
+            success: function(response) {
+                if (response.success) {
+                    alert('Area statement saved successfully!');
+                    // Optional: redirect to download the file
+                    window.location.href = response.file_url;
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred. Please try again.');
+                console.error(error);
+            }
+        });
+    });
+    
+    // Reset form
+    $('#resetBtn').click(function() {
+        $('#projectName').val('');
+        
+        // Keep only one entry and reset its values
+        const firstEntry = $('.area-entry:first');
+        firstEntry.find('.floor').val('');
+        firstEntry.find('.description').val('');
+        firstEntry.find('.area').val('');
+        
+        // Remove all other entries
+        $('.area-entry:not(:first)').remove();
+        
+        // Reset serial numbers
+        updateSerialNumbers();
+    });
+
+    // Show/hide existing project section based on project action
+    $('#projectAction').change(function() {
+        if ($(this).val() === 'existing') {
+            $('#existingProjectSection').removeClass('hidden');
+        } else {
+            $('#existingProjectSection').addClass('hidden');
+        }
+    });
+
+    // Load project data when button is clicked
+    $('#loadProjectBtn').click(function() {
+        const projectName = $('#existingProjectSelect').val();
+        
+        if (!projectName) {
+            alert('Please select a project');
+            return;
+        }
+        
+        // Load project data via AJAX
+        $.ajax({
+            url: '/get-area-data',
+            type: 'GET',
+            data: {
+                project_name: projectName
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Set project name
+                    $('#projectName').val(response.project_name);
+                    
+                    // Clear existing entries and load new data
+                    $('#areaEntries').empty();
+                    
+                    if (response.areas.length === 0) {
+                        // Add a blank entry if no areas found
+                        const blankEntry = `
+                            <div class="area-entry">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>SR.NO.</label>
+                                        <input type="text" class="sr-no" value="1" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="floor">Floor:</label>
+                                        <input type="text" class="floor" name="floor" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description:</label>
+                                        <input type="text" class="description" name="description" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="area">Area (sq.ft):</label>
+                                        <input type="number" class="area" name="area" step="0.01" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <button type="button" class="btn btn-danger remove-entry" disabled>
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        $('#areaEntries').append(blankEntry);
+                    } else {
+                        // Add each area entry
+                        response.areas.forEach((area, index) => {
+                            const entry = `
+                                <div class="area-entry">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>SR.NO.</label>
+                                            <input type="text" class="sr-no" value="${index + 1}" readonly>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="floor">Floor:</label>
+                                            <input type="text" class="floor" name="floor" value="${area.floor || ''}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="description">Description:</label>
+                                            <input type="text" class="description" name="description" value="${area.description || ''}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="area">Area (sq.ft):</label>
+                                            <input type="number" class="area" name="area" step="0.01" value="${area.area || 0}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <button type="button" class="btn btn-danger remove-entry">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            $('#areaEntries').append(entry);
+                        });
+                    }
+                    
+                    // Update serial numbers and button states
+                    updateSerialNumbers();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while loading project data.');
+                console.error(error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

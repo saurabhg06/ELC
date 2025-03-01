@@ -1,0 +1,563 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="card animate-fade-in">
+        <div class="card-header">
+            <h2>HVAC Load Calculator</h2>
+        </div>
+        
+        <div class="project-selection">
+            <div class="form-group">
+                <label for="projectAction">Project Action:</label>
+                <select id="projectAction" name="project_action">
+                    <option value="new">Create New Project</option>
+                    <option value="existing">Edit Existing Project</option>
+                </select>
+            </div>
+            
+            <div id="existingProjectSection" class="hidden animate-fade-in">
+                <div class="form-group">
+                    <label for="existingProjectSelect">Select Project:</label>
+                    <select id="existingProjectSelect" name="existing_project">
+                        <option value="">-- Select a project --</option>
+                        {% for project in projects %}
+                            <option value="{{ project }}">{{ project }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="button" id="loadProjectBtn" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Load Project Data
+                </button>
+            </div>
+        </div>
+        
+        <div class="form-container animate-fade-in">
+            <form id="hvacLoadForm">
+                <div class="form-section">
+                    <h3>Project Information</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="projectName">Project Name:</label>
+                            <input type="text" id="projectName" name="project_name" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>HVAC Load List</h3>
+                    <div id="hvacEntries">
+                        <div class="hvac-entry">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>SR.NO.</label>
+                                    <input type="text" class="sr-no" value="1" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label for="floor">Floor:</label>
+                                    <input type="text" class="floor" name="floor" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="description">Description:</label>
+                                    <input type="text" class="description" name="description" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="qty">Quantity:</label>
+                                    <input type="number" class="qty" name="qty" min="1" value="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="wattage" class="wattage-label">Connected Load:</label>
+                                    <input type="number" class="wattage" name="wattage" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="df">Diversity Factor:</label>
+                                    <input type="number" class="df" name="df" step="0.1" value="0.8" min="0.1" max="1" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="voltage">Voltage (V):</label>
+                                    <select class="voltage" name="voltage">
+                                        <option value="230">230 V</option>
+                                        <option value="415">415 V</option>
+                                        <option value="230/415">230/415 V</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="frequency">Frequency (Hz):</label>
+                                    <input type="number" class="frequency" name="frequency" value="50" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="phase">Phase:</label>
+                                    <select class="phase" name="phase">
+                                        <option value="1Ph">1 Ph</option>
+                                        <option value="3Ph">3 Ph</option>
+                                        <option value="1Ph/3Ph">1Ph/3Ph</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="power_backup">Power Backup:</label>
+                                    <select class="power_backup" name="power_backup">
+                                        <option value="MSEB">MSEB</option>
+                                        <option value="MSEB/DG">MSEB/DG</option>
+                                        <option value="UPS">UPS</option>
+                                        <option value="INVERTER">INVERTER</option>
+                                        <option value="MSEB/DG/UPS">MSEB/DG/UPS</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="remarks">Remarks (Area in sq.ft):</label>
+                                    <input type="text" class="remarks" name="remarks">
+                                </div>
+                                <div class="form-group remove-button-container">
+                                    <button type="button" class="btn btn-danger remove-entry" disabled>
+                                        <i class="fas fa-trash"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="hvac-entry-divider"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <button type="button" id="addEntryBtn" class="btn btn-info">
+                                <i class="fas fa-plus"></i> Add HVAC Unit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" id="resetBtn">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <button type="button" id="calculateBtn" class="btn btn-primary">
+                        <i class="fas fa-calculator"></i> Calculate & Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Add new HVAC entry
+    $('#addEntryBtn').click(function() {
+        const entryCount = $('.hvac-entry').length + 1;
+        const newEntry = `
+            <div class="hvac-entry">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>SR.NO.</label>
+                        <input type="text" class="sr-no" value="${entryCount}" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="floor">Floor:</label>
+                        <input type="text" class="floor" name="floor" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description:</label>
+                        <input type="text" class="description" name="description" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="qty">Quantity:</label>
+                        <input type="number" class="qty" name="qty" min="1" value="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="wattage" class="wattage-label">Connected Load:</label>
+                        <input type="number" class="wattage" name="wattage" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="df">Diversity Factor:</label>
+                        <input type="number" class="df" name="df" step="0.1" value="0.8" min="0.1" max="1" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="voltage">Voltage (V):</label>
+                        <select class="voltage" name="voltage">
+                            <option value="230">230 V</option>
+                            <option value="415">415 V</option>
+                            <option value="230/415">230/415 V</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="frequency">Frequency (Hz):</label>
+                        <input type="number" class="frequency" name="frequency" value="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phase">Phase:</label>
+                        <select class="phase" name="phase">
+                            <option value="1Ph">1 Ph</option>
+                            <option value="3Ph">3 Ph</option>
+                            <option value="1Ph/3Ph">1Ph/3Ph</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="power_backup">Power Backup:</label>
+                        <select class="power_backup" name="power_backup">
+                            <option value="MSEB">MSEB</option>
+                            <option value="MSEB/DG">MSEB/DG</option>
+                            <option value="UPS">UPS</option>
+                            <option value="INVERTER">INVERTER</option>
+                            <option value="MSEB/DG/UPS">MSEB/DG/UPS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="remarks">Remarks (Area in sq.ft):</label>
+                        <input type="text" class="remarks" name="remarks">
+                    </div>
+                    <div class="form-group remove-button-container">
+                        <button type="button" class="btn btn-danger remove-entry">
+                            <i class="fas fa-trash"></i> Remove
+                        </button>
+                    </div>
+                </div>
+                <div class="hvac-entry-divider"></div>
+            </div>
+        `;
+        $('#hvacEntries').append(newEntry);
+        updateSerialNumbers();
+    });
+    
+    // Remove HVAC entry
+    $(document).on('click', '.remove-entry', function() {
+        $(this).closest('.hvac-entry').remove();
+        updateSerialNumbers();
+    });
+    
+    // Update serial numbers
+    function updateSerialNumbers() {
+        $('.sr-no').each(function(index) {
+            $(this).val(index + 1);
+        });
+        
+        // If there's only one entry, disable its remove button
+        if ($('.hvac-entry').length <= 1) {
+            $('.remove-entry').prop('disabled', true);
+        } else {
+            $('.remove-entry').prop('disabled', false);
+        }
+    }
+    
+    // Calculate and save
+    $('#calculateBtn').click(function() {
+        // Validate form
+        let isValid = true;
+        $('#hvacLoadForm input[required]').each(function() {
+            if ($(this).val() === '') {
+                isValid = false;
+                $(this).addClass('invalid');
+            } else {
+                $(this).removeClass('invalid');
+            }
+        });
+        
+        if (!isValid) {
+            alert('Please fill all required fields');
+            return;
+        }
+        
+        // Collect form data
+        const projectName = $('#projectName').val();
+        const hvac_units = [];
+        
+        $('.hvac-entry').each(function() {
+            const floor = $(this).find('.floor').val();
+            const description = $(this).find('.description').val();
+            const qty = parseInt($(this).find('.qty').val());
+            const wattage = parseFloat($(this).find('.wattage').val());
+            const df = parseFloat($(this).find('.df').val());
+            const voltage = $(this).find('.voltage').val();
+            const frequency = $(this).find('.frequency').val();
+            const phase = $(this).find('.phase').val();
+            const power_backup = $(this).find('.power_backup').val();
+            const remarks = $(this).find('.remarks').val();
+            
+            hvac_units.push({
+                floor: floor,
+                description: description,
+                qty: qty,
+                wattage: wattage,
+                df: df,
+                voltage: voltage,
+                frequency: frequency,
+                phase: phase,
+                power_backup: power_backup,
+                remarks: remarks
+            });
+        });
+        
+        // Send data to server
+        $.ajax({
+            url: '/save-hvac-load',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                project_name: projectName,
+                hvac_units: hvac_units
+            }),
+            success: function(response) {
+                if (response.success) {
+                    alert('HVAC load data saved successfully!');
+                    // Optional: redirect to download the file
+                    window.location.href = response.file_url;
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred. Please try again.');
+                console.error(error);
+            }
+        });
+    });
+    
+    // Reset form
+    $('#resetBtn').click(function() {
+        $('#projectName').val('');
+        
+        // Keep only one entry and reset its values
+        const firstEntry = $('.hvac-entry:first');
+        firstEntry.find('.floor').val('');
+        firstEntry.find('.description').val('');
+        firstEntry.find('.wattage').val('');
+        firstEntry.find('.qty').val('1');
+        firstEntry.find('.df').val('0.8');
+        firstEntry.find('.voltage').val('230');
+        firstEntry.find('.frequency').val('50');
+        firstEntry.find('.phase').val('1Ph');
+        firstEntry.find('.power_backup').val('MSEB');
+        firstEntry.find('.remarks').val('');
+        
+        // Remove all other entries
+        $('.hvac-entry:not(:first)').remove();
+        
+        // Reset serial numbers
+        updateSerialNumbers();
+    });
+
+    // Show/hide existing project section based on project action
+    $('#projectAction').change(function() {
+        if ($(this).val() === 'existing') {
+            $('#existingProjectSection').removeClass('hidden');
+        } else {
+            $('#existingProjectSection').addClass('hidden');
+        }
+    });
+
+    // Load project data when button is clicked
+    $('#loadProjectBtn').click(function() {
+        const projectName = $('#existingProjectSelect').val();
+        
+        if (!projectName) {
+            alert('Please select a project');
+            return;
+        }
+        
+        // Load project data via AJAX
+        $.ajax({
+            url: '/get-hvac-data',
+            type: 'GET',
+            data: {
+                project_name: projectName
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Set project name
+                    $('#projectName').val(response.project_name);
+                    
+                    // Clear existing entries and load new data
+                    $('#hvacEntries').empty();
+                    
+                    if (response.hvac_units.length === 0) {
+                        // Add a blank entry if no units found
+                        const blankEntry = `
+                            <div class="hvac-entry">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>SR.NO.</label>
+                                        <input type="text" class="sr-no" value="1" readonly>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="floor">Floor:</label>
+                                        <input type="text" class="floor" name="floor" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="description">Description:</label>
+                                        <input type="text" class="description" name="description" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="qty">Quantity:</label>
+                                        <input type="number" class="qty" name="qty" min="1" value="1" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="wattage" class="wattage-label">Connected Load:</label>
+                                        <input type="number" class="wattage" name="wattage" step="0.01" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="df">Diversity Factor:</label>
+                                        <input type="number" class="df" name="df" step="0.1" value="0.8" min="0.1" max="1" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="voltage">Voltage (V):</label>
+                                        <select class="voltage" name="voltage">
+                                            <option value="230">230 V</option>
+                                            <option value="415">415 V</option>
+                                            <option value="230/415">230/415 V</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="frequency">Frequency (Hz):</label>
+                                        <input type="number" class="frequency" name="frequency" value="50" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="phase">Phase:</label>
+                                        <select class="phase" name="phase">
+                                            <option value="1Ph">1 Ph</option>
+                                            <option value="3Ph">3 Ph</option>
+                                            <option value="1Ph/3Ph">1Ph/3Ph</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="power_backup">Power Backup:</label>
+                                        <select class="power_backup" name="power_backup">
+                                            <option value="MSEB">MSEB</option>
+                                            <option value="MSEB/DG">MSEB/DG</option>
+                                            <option value="UPS">UPS</option>
+                                            <option value="INVERTER">INVERTER</option>
+                                            <option value="MSEB/DG/UPS">MSEB/DG/UPS</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="remarks">Remarks (Area in sq.ft):</label>
+                                        <input type="text" class="remarks" name="remarks">
+                                    </div>
+                                    <div class="form-group remove-button-container">
+                                        <button type="button" class="btn btn-danger remove-entry" disabled>
+                                            <i class="fas fa-trash"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="hvac-entry-divider"></div>
+                            </div>
+                        `;
+                        $('#hvacEntries').append(blankEntry);
+                    } else {
+                        // Add each HVAC entry
+                        response.hvac_units.forEach((unit, index) => {
+                            const entry = `
+                                <div class="hvac-entry">
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label>SR.NO.</label>
+                                            <input type="text" class="sr-no" value="${index + 1}" readonly>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="floor">Floor:</label>
+                                            <input type="text" class="floor" name="floor" value="${unit.floor || ''}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="description">Description:</label>
+                                            <input type="text" class="description" name="description" value="${unit.description || ''}" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="qty">Quantity:</label>
+                                            <input type="number" class="qty" name="qty" min="1" value="${unit.qty || 1}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="wattage" class="wattage-label">Connected Load:</label>
+                                            <input type="number" class="wattage" name="wattage" step="0.01" value="${unit.wattage || ''}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="df">Diversity Factor:</label>
+                                            <input type="number" class="df" name="df" step="0.1" min="0.1" max="1" value="${unit.df || 0.8}" required>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="voltage">Voltage (V):</label>
+                                            <select class="voltage" name="voltage">
+                                                <option value="230" ${unit.voltage === '230' ? 'selected' : ''}>230 V</option>
+                                                <option value="415" ${unit.voltage === '415' ? 'selected' : ''}>415 V</option>
+                                                <option value="230/415" ${unit.voltage === '230/415' ? 'selected' : ''}>230/415 V</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="frequency">Frequency (Hz):</label>
+                                            <input type="number" class="frequency" name="frequency" value="${unit.frequency || 50}" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="phase">Phase:</label>
+                                            <select class="phase" name="phase">
+                                                <option value="1Ph" ${unit.phase === '1Ph' ? 'selected' : ''}>1 Ph</option>
+                                                <option value="3Ph" ${unit.phase === '3Ph' ? 'selected' : ''}>3 Ph</option>
+                                                <option value="1Ph/3Ph" ${unit.phase === '1Ph/3Ph' ? 'selected' : ''}>1Ph/3Ph</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="power_backup">Power Backup:</label>
+                                            <select class="power_backup" name="power_backup">
+                                                <option value="MSEB" ${unit.power_backup === 'MSEB' ? 'selected' : ''}>MSEB</option>
+                                                <option value="MSEB/DG" ${unit.power_backup === 'MSEB/DG' ? 'selected' : ''}>MSEB/DG</option>
+                                                <option value="UPS" ${unit.power_backup === 'UPS' ? 'selected' : ''}>UPS</option>
+                                                <option value="INVERTER" ${unit.power_backup === 'INVERTER' ? 'selected' : ''}>INVERTER</option>
+                                                <option value="MSEB/DG/UPS" ${unit.power_backup === 'MSEB/DG/UPS' ? 'selected' : ''}>MSEB/DG/UPS</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="remarks">Remarks (Area in sq.ft):</label>
+                                            <input type="text" class="remarks" name="remarks" value="${unit.remarks || ''}">
+                                        </div>
+                                        <div class="form-group remove-button-container">
+                                            <button type="button" class="btn btn-danger remove-entry">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="hvac-entry-divider"></div>
+                                </div>
+                            `;
+                            $('#hvacEntries').append(entry);
+                        });
+                    }
+                    
+                    // Update serial numbers and button states
+                    updateSerialNumbers();
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('An error occurred while loading project data.');
+                console.error(error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

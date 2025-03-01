@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEP Load Calculation Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <style>
+        .results-container {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .results-table td {
+            padding: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .results-table td:first-child {
+            font-weight: bold;
+            width: 40%;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button-group button,
+        .button-group a {
+            flex: 1;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    {% include 'layout.html' %}
+    {% extends "layout.html" %}
+
+    {% block content %}
+    <div class="container">
+        <h2>View Project Results</h2>
+        
+        <div class="project-selection">
+            <div class="form-group">
+                <label for="existingSheetSelect">Select Sheet:</label>
+                <select id="existingSheetSelect" name="existing_sheet">
+                    {% for sheet_name in projects.keys() %}
+                    <option value="{{ sheet_name }}">{{ sheet_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="existingProjectSelect">Select Project:</label>
+                <select id="existingProjectSelect" name="existing_project">
+                    <option value="">-- Select a project --</option>
+                </select>
+            </div>
+            
+            <button type="button" id="loadProjectBtn" class="btn-secondary">View Project</button>
+        </div>
+        
+        <div id="projectResults" class="results-container hidden">
+            <h3>Project Details</h3>
+            <table class="results-table">
+                <tbody id="resultsBody">
+                    <!-- Project results will be inserted here -->
+                </tbody>
+            </table>
+            <div class="button-group">
+                <button type="button" id="editProjectBtn" class="btn-secondary">Edit Project</button>
+                <a id="downloadExcelBtn" class="btn-calculate">Download Excel</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Additional JS for the results page
+        const loadProjectBtn = document.getElementById('loadProjectBtn');
+        const editProjectBtn = document.getElementById('editProjectBtn');
+        const downloadExcelBtn = document.getElementById('downloadExcelBtn');
+        const projectResults = document.getElementById('projectResults');
+        const resultsBody = document.getElementById('resultsBody');
+        
+        if (loadProjectBtn) {
+            loadProjectBtn.addEventListener('click', function() {
+                const sheetName = document.getElementById('existingSheetSelect').value;
+                const projectName = document.getElementById('existingProjectSelect').value;
+                
+                if (!sheetName || !projectName) {
+                    alert('Please select both a sheet and a project');
+                    return;
+                }
+                
+                fetch(`/get_project_data?sheet_name=${sheetName}&project_name=${projectName}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Project not found');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Display project data
+                        projectResults.classList.remove('hidden');
+                        resultsBody.innerHTML = '';
+                        
+                        // Add each property to the table
+                        for (const [key, value] of Object.entries(data)) {
+                            const row = document.createElement('tr');
+                            const keyCell = document.createElement('td');
+                            const valueCell = document.createElement('td');
+                            
+                            keyCell.textContent = key;
+                            valueCell.textContent = value;
+                            
+                            row.appendChild(keyCell);
+                            row.appendChild(valueCell);
+                            resultsBody.appendChild(row);
+                        }
+                        
+                        // Update edit button link
+                        editProjectBtn.setAttribute('data-sheet', sheetName);
+                        editProjectBtn.setAttribute('data-project', projectName);
+                        
+                        // Update download link
+                        downloadExcelBtn.href = `/calculate?download=true&sheet_name=${sheetName}&project_name=${projectName}`;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error loading project data: ' + error.message);
+                    });
+            });
+        }
+        
+        if (editProjectBtn) {
+            editProjectBtn.addEventListener('click', function() {
+                const sheetName = this.getAttribute('data-sheet');
+                const projectName = this.getAttribute('data-project');
+                window.location.href = `/?edit=true&sheet=${sheetName}&project=${projectName}`;
+            });
+        }
+    });
+    </script>
+    {% endblock %}
+</body>
+</html>

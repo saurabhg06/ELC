@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <title>MEP Load Calculator | Professional MEP Analysis Tool</title>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-bolt"></i>
+                    <h1>MEP Load Calculator</h1>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="/">MEP Calculator</a></li>
+                        <li><a href="/area-statement">Area Statement</a></li>
+                        <li><a href="/machine-load">Machine Load</a></li>
+                        <li><a href="/hvac-load">HVAC Load</a></li>  <!-- Add this line -->
+                        <li><a href="/results">Results</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p>&copy; 2023 MEP Load Calculator. All rights reserved.</p>
+                    <p>A professional tool for Mechanical, Electrical, and Plumbing load calculations.</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                    <a href="#">Contact</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-question-circle"></i> Help & Instructions</h3>
+                <button class="close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <h4>How to Use the MEP Load Calculator</h4>
+                <ol>
+                    <li>Enter your project details in the provided form fields</li>
+                    <li>Input the required load values for equipment, lighting, and HVAC</li>
+                    <li>Set your desired safety factor</li>
+                    <li>Click "Calculate & Save" to process your inputs</li>
+                    <li>Download or view your results</li>
+                </ol>
+                <p>For more detailed instructions or technical support, please contact our team.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+    <script>
+        // Simple modal functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const helpTrigger = document.querySelector('.help-trigger');
+            const helpModal = document.getElementById('helpModal');
+            const closeModal = document.querySelector('.close-modal');
+            
+            if (helpTrigger && helpModal) {
+                helpTrigger.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    helpModal.classList.remove('hidden');
+                });
+                
+                closeModal.addEventListener('click', function() {
+                    helpModal.classList.add('hidden');
+                });
+                
+                // Close modal if clicked outside
+                window.addEventListener('click', function(e) {
+                    if (e.target === helpModal) {
+                        helpModal.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
